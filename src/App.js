@@ -1,18 +1,25 @@
-import { Route, Routes } from "react-router-dom";
-import Home from "./Page/Home";
-import About from "./Page/About";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Feed from './Page/Feed';
+import Profile from './Page/Profile';
+import Post from './Page/Post';
+import Users from './Page/Users';
+import Notifications from './Page/Notifications';
+import Logout from './Page/Logout';
 
 function App() {
   return (
-    <div className="App">
+    <Router>
       <Routes>
-        <Route path="/" element={<Home/>}/>
-        <Route path="/about" element={<About/>}/>
+        <Route path="/" element={<Feed />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/post" element={<Post />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/logout" element={<Logout />} />
       </Routes>
-    </div>
+    </Router>
   );
 }
 
 export default App;
-
-

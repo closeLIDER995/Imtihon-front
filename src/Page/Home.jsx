@@ -1,13 +1,13 @@
-import React from 'react'
-import Header from '../Components/Header'
+import React from 'react';
+import Header from '../Components/Header';
 
 const Home = () => {
   return (
-    <div>
-        <Header/>
-        <h1>Home</h1>
+    <div style={{ textAlign: 'center', marginTop: '100px' }}>
+      <Header />
+      <h1>Welcome to Home Page!</h1>
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;
