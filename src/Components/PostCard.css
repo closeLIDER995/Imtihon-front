@@ -1,0 +1,16 @@
+@media (max-width: 768px) {
+    .post-card {
+      padding: 1rem;
+    }
+  
+    .post-card img {
+      width: 100%;
+      height: auto;
+    }
+  
+    .post-buttons {
+      flex-direction: column;
+      gap: 10px;
+    }
+  }
+  

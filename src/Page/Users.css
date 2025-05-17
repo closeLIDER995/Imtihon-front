@@ -1,0 +1,81 @@
+/* Umumiy konteyner */
+.user-search-container {
+    min-height: 100vh;
+    background-color: black;
+    display: flex;
+    justify-content: center;
+    padding-top: 40px;
+    font-family: sans-serif;
+  }
+  
+  /* Ichki karta */
+  .user-search-box {
+    width: 100%;
+    max-width: 600px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    padding: 24px;
+  }
+  
+  /* Qidiruv inputi */
+  .user-search-input {
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 24px;
+    outline: none;
+    transition: border 0.2s;
+  }
+  
+  .user-search-input:focus {
+    border-color: #7b5cff;
+  }
+  
+  /* Har bir user kartasi */
+  .user-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9fafb;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  }
+  
+  /* Avatar (doira) */
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    background-color: #ccc;
+    border-radius: 50%;
+    margin-right: 16px;
+  }
+  
+  /* Ism va avatar */
+  .user-info {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  /* Follow tugmasi */
+  .follow-button {
+    background-color: #7b5cff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .follow-button:hover {
+    background-color: #684af3;
+  }
+  

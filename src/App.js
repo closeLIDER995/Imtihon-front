@@ -6,12 +6,14 @@ import Post from './Page/Post';
 import Users from './Page/Users';
 import Notifications from './Page/Notifications';
 import Logout from './Page/Logout';
+import AuthForm from './Components/AuthForm';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Feed />} />
+        <Route path="/auth" element={<AuthForm />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/post" element={<Post />} />
         <Route path="/users" element={<Users />} />

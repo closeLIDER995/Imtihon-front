@@ -1,5 +1,7 @@
 import React from 'react';
 import { Navbar, Nav, NavItem, NavLink, NavbarBrand } from 'reactstrap';
+import '../styles/Navbar.css';
+
 
 const AppNavbar = () => {
   return (
