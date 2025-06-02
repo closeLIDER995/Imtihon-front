@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { register, login } from '../api/authRequest'; // import qiling
+import { toast } from 'react-toastify';
+import { register, login } from '../api/authRequest';
 
 const AuthForm = () => {
   const [isSignup, setIsSignup] = useState(false);
@@ -10,6 +11,7 @@ const AuthForm = () => {
     email: '',
     password: ''
   });
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
 
@@ -19,22 +21,53 @@ const AuthForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
 
     try {
-      const data = isSignup
+      const response = isSignup
         ? await register(formData)
         : await login(formData);
 
-      if (data.success) {
-        navigate('/home');
+      console.log('Full response:', response);
+      const data = response.data;
+
+      if (data) {
+        if (!data.token || !data.userId) {
+          throw new Error('Token or userId missing in response');
+        }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.userId.toString());
+        console.log('Token and userId set:', { token: data.token, userId: data.userId });
+        toast.success(isSignup ? 'Signup Success' : 'Login Success', {
+          position: "top-right",
+          autoClose: 10000,
+        });
+        navigate('/home', { replace: true });
       } else {
-        alert(data.message || 'Xatolik yuz berdi');
+        setError(data?.message || 'Serverdan noto‘g‘ri javob keldi');
+        toast.error(isSignup ? 'Signup Denied' : 'Login Denied', {
+          position: "top-right",
+          autoClose: 10000,
+        });
       }
     } catch (error) {
-      console.error(error);
-      alert('Server bilan ulanishda xatolik');
+      console.error('Error details:', error.response ? error.response.data : error.message);
+      setError(error.response?.data?.message || error.message || 'Server bilan ulanishda xatolik');
+      toast.error(isSignup ? 'Signup Denied' : 'Login Denied', {
+        position: "top-right",
+        autoClose: 10000,
+      });
     }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    if (token && token !== 'null' && userId && userId !== 'null') {
+      console.log('Token and userId found, navigating to /home');
+      navigate('/home', { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', marginTop: '100px' }}>
@@ -47,6 +80,8 @@ const AuthForm = () => {
         color: '#fff'
       }}>
         <h3>{isSignup ? 'Signup' : 'Login'}</h3>
+
+        {error && <p style={{ color: '#ff0000', marginBottom: '10px' }}>{error}</p>}
 
         {isSignup && (
           <>

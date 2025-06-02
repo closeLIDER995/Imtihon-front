@@ -1,57 +1,394 @@
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.modal-content {
-    max-width: 400px;
-    width: 100%;
-    background-color: #fff;
-    padding: 24px;
-    text-align: center;
-}
-
-.btn-close-modal {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    background: none;
-    border: none;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    color: #999;
-    transition: color 0.2s;
-}
-
-.btn-close-modal:hover {
+/* Umumiy Sozlamalar */
+body {
+    background-color: #f4f7fc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
     color: #333;
 }
 
-.modal-icon-wrapper {
-    width: 100px;
-    height: 100px;
-    background-color: #f1f1f1;
+/* Navbar Dizayni */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, #1e90ff, #00c4ff);
+    padding: 15px 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar-brand {
+    color: white !important;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 0.5px;
+}
+
+.nav-link {
+    color: white !important;
+    font-weight: 500;
+    margin-right: 20px;
+    transition: color 0.3s ease-in-out;
+}
+
+.nav-link:hover {
+    color: #e0e0e0 !important;
+}
+
+.nav-link.active-link {
+    color: #ffd700 !important;
+    font-weight: 700;
+}
+
+.notification-badge {
+    background: #ff4d4f;
+    color: white;
     border-radius: 50%;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    margin-left: 8px;
+    vertical-align: middle;
+    font-weight: bold;
+}
+
+.logout-btn {
+    background-color: #ff4d4f;
+    color: white !important;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-weight: 500;
+    transition: background-color 0.3s, transform 0.2s;
+    border: none;
+    margin-left: 10px;
+}
+
+.logout-btn:hover {
+    background-color: #d9363e;
+    transform: translateY(-2px);
+}
+
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.bar {
+    width: 25px;
+    height: 3px;
+    background-color: white;
+    margin: 3px 0;
+    transition: 0.4s;
+}
+
+.link-all {
     display: flex;
     align-items: center;
+    gap: 20px;
+}
+
+.link-all.active {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .link-all {
+        display: none;
+    }
+
+    .link-all.active {
+        display: flex;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+}
+
+/* Post Grid Dizayni */
+.post-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    padding: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (max-width: 1200px) {
+    .post-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .post-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.post-card {
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.post-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.post-card h5 {
+    font-size: 1.2rem;
+    color: #2d3748;
+    margin-bottom: 12px;
+    padding: 0 15px;
+}
+
+.post-card p {
+    font-size: 0.95rem;
+    color: #4a5568;
+    margin-bottom: 15px;
+    padding: 0 15px;
+}
+
+.post-image {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 12px 12px 0 0;
+}
+
+/* Flex Elementlar */
+.d-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+}
+
+.d-flex button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #1e90ff;
+    background: none;
+    border: none;
+    transition: color 0.3s, transform 0.2s;
+}
+
+.d-flex button:hover {
+    color: #1565c0;
+    transform: translateY(-2px);
+}
+
+/* Notification Container */
+.notif-container {
+    display: flex;
     justify-content: center;
+    margin-top: 60px;
+    padding: 0 20px;
 }
 
-.modal-icon-emoji {
-    font-size: 36px;
+.notif-box {
+    width: 100%;
+    max-width: 650px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    padding: 25px;
 }
 
+.notif-empty {
+    text-align: center;
+    color: #718096;
+    font-size: 1.1rem;
+    padding: 20px;
+}
 
-.no-notification {
-    margin: 0;
+/* Notification Item */
+.notif-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    transition:  0.2s, color 0.2s;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.notif-item.unread {
+    background: white;
+    border-left: 6px solid black;
+    color: #222;
+}
+
+.notif-item.read {
+    background: #f3f3f3;
+    color: #888;
+    border-left: 6px solid #bdbdbd;
+}
+
+.notif-item:hover {
+    transform: translateX(5px);
+}
+
+.notif-content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.notif-icon {
+    font-size: 1.4rem;
+    margin-right: 12px;
+    color: #1e90ff;
+}
+
+.notif-text {
+    flex: 1;
+}
+
+.notif-username {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.notif-time {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 6px;
+}
+
+.notif-delete-btn {
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: 0.3s, transform 0.2s;
+}
+
+.notif-delete-btn:hover {
+    background: #d9363e;
+    transform: scale(1.05);
+}
+
+.notif-clear-btn {
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 15px;
+    font-weight: 500;
+    transition: 0.3s, transform 0.2s;
+}
+
+.notif-clear-btn:hover {
+    background: #d9363e;
+    transform: translateY(-2px);
+}
+
+/* Modal Dizayni */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border: none;
+    position: relative;
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 10px;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #6c757d;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.modal-close:hover {
+    color: #343a40;
+}
+
+.modal-body {
+    padding: 0;
+    font-size: 1rem;
+    color: #4a5568;
+}
+
+@media (max-width: 576px) {
+    .modal-content {
+        padding: 15px;
+        width: 95%;
+    }
+    .modal-title {
+        font-size: 1.2rem;
+    }
+    .btn {
+        padding: 8px 15px;
+        font-size: 0.9rem;
+    }
 }

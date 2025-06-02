@@ -5,9 +5,9 @@ const InfoContext = createContext()
 export const useInfoContext = () => useContext(InfoContext)
 
 export const InfoProvider = ({children}) => {
-    const [user, setUser] = useState("Abubakr")
+    const [user, setUser] = useState("")
 
-    const [address, setAdress] = useState("Toshkent")
+    const [address, setAdress] = useState("")
 
     const value = {
         user, setUser,

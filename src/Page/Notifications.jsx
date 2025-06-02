@@ -1,94 +1,138 @@
-import React, { useState } from 'react';
-import NotificationModal from './Modal';
+import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import NotificationModal from './ModalNotification';
+import { NotificationContext } from './NotificationContex';
+import AppNavbar from '../Components/Navbar';
+import {
+  readNotification,
+  deleteNotification,
+  deleteAllNotifications
+} from '../api/notificationService';
 import './styles.css';
 
-const Notification = () => {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      icon: '🔔',
-      username: 'JohnDoe',
-      message: 'liked your post.',
-      time: '2 minutes ago',
-    },
-    {
-      id: 2,
-      icon: '❤️',
-      username: 'JaneSmith',
-      message: 'started following you.',
-      time: '10 minutes ago',
-    },
-    {
-      id: 3,
-      icon: '🧹',
-      username: 'TechGuru',
-      message: 'commented on your post.',
-      time: '1 hour ago',
-    },
-  ]);
-
+const Notifications = () => {
+  const { notifications, setNotifications, socket } = useContext(NotificationContext);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const navigate = useNavigate();
+  const userId = localStorage.getItem('userId');
+  const token = localStorage.getItem('token');
 
-  const clearAll = () => {
-    setNotifications([]);
-    setSelectedNotification(null);
+  const clearAll = async () => {
+    if (window.confirm('Barcha bildirishnomalarni o‘chirishni xohlaysizmi?')) {
+      try {
+        await deleteAllNotifications(userId, token);
+        setNotifications([]);
+        setSelectedNotification(null);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.clear();
+          navigate('/auth', { replace: true });
+        }
+      }
+    }
   };
 
-  const deleteOne = (id) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
-    setSelectedNotification(null);
+  const deleteOne = async (id) => {
+    if (!window.confirm('Ushbu bildirishnomani o‘chirishni xohlaysizmi?')) return;
+    try {
+      await deleteNotification(id, token);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+      if (selectedNotification?._id === id) setSelectedNotification(null);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.clear();
+        navigate('/auth', { replace: true });
+      }
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      const response = await readNotification(id, token);
+      if (response.status === 200) {
+        setNotifications(prev =>
+          prev.map(n => (n._id === id ? { ...n, isRead: true } : n))
+        );
+        socket?.emit('notificationUpdated', { notificationId: id });
+      }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.clear();
+        navigate('/auth', { replace: true });
+      }
+    }
+  };
+
+  const handleNotificationClick = (notif) => {
+    if (!notif.isRead) markAsRead(notif._id);
+    setSelectedNotification(notif);
+  };
+
+  const handleUsernameClick = (senderId, e) => {
+    e.stopPropagation();
+    navigate(`/profile/${senderId}`);
   };
 
   return (
-    <div className="container-fluid bg-light min-vh-100 d-flex flex-column align-items-center justify-content-center">
-      <div className="notification-box p-4 shadow rounded bg-white">
-        {notifications.length === 0 ? (
-          <p className="text-center text-muted no-notification">No notifications</p>
-        ) : (
-          notifications.map(notif => (
-            <div
-              key={notif.id}
-              className="d-flex align-items-center justify-content-between p-3 border-bottom notification-item"
-            >
+    <>
+      <AppNavbar />
+      <div className="notif-container">
+        <div className="notif-box">
+          {notifications.length === 0 ? (
+            <p className="notif-empty">Hozircha bildirishnomalar yo‘q</p>
+          ) : (
+            notifications.map((notif) => (
               <div
-                className="d-flex align-items-center flex-grow-1"
-                onClick={() => setSelectedNotification(notif)}
+                key={notif._id}
+                className={`notif-item ${notif.isRead ? 'read' : 'unread'}`}
+                onClick={() => handleNotificationClick(notif)}
               >
-                <span className="icon-circle me-3">{notif.icon}</span>
-                <div>
-                  <strong>{notif.username}</strong> {notif.message}
-                  <p className="text-muted mb-0">{notif.time}</p>
+                <div className="notif-content">
+                  <span className="notif-icon">
+                    {notif.type === 'follow' ? '❤️' : notif.type === 'comment' ? '💬' : '👍'}
+                  </span>
+                  <div className="notif-text">
+                    <span
+                      className="notif-username"
+                      onClick={(e) => handleUsernameClick(notif.senderId?._id, e)}
+                      style={{ cursor: 'pointer', color: '#007bff' }}
+                    >
+                      {notif.senderId?.username || 'Noma’lum'}
+                    </span>{' '}
+                    {notif.message}
+                    <p className="notif-time">
+                      {new Date(notif.createdAt).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  className="notif-delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteOne(notif._id);
+                  }}
+                >
+                  O‘chirish
+                </button>
               </div>
-              <button
-                className="btn btn-sm btn-outline-danger btn-del"
-                onClick={() => deleteOne(notif.id)}
-              >
-                Delete
-              </button>
-            </div>
-          ))
-        )}
+            ))
+          )}
+          {notifications.length > 0 && (
+            <button className="notif-clear-btn" onClick={clearAll}>
+              Barchasini O‘chirish
+            </button>
+          )}
+        </div>
 
-        {notifications.length > 0 && (
-          <button
-            className="btn btn-primary mt-3 w-100"
-            onClick={clearAll}
-          >
-            Clear All Notifications
-          </button>
+        {selectedNotification && (
+          <NotificationModal
+            notification={selectedNotification}
+            onClose={() => setSelectedNotification(null)}
+          />
         )}
-
       </div>
-
-      {selectedNotification && (
-        <NotificationModal
-          notification={selectedNotification}
-          onClose={() => setSelectedNotification(null)}
-        />
-      )}
-    </div>
+    </>
   );
 };
 
-export default Notification;
+export default Notifications;

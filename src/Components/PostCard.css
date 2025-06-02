@@ -1,16 +1,58 @@
-@media (max-width: 768px) {
-    .post-card {
-      padding: 1rem;
-    }
-  
-    .post-card img {
-      width: 100%;
-      height: auto;
-    }
-  
-    .post-buttons {
-      flex-direction: column;
-      gap: 10px;
-    }
+.post-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 20px;
+}
+
+.post-card {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.post-card:hover {
+  transform: translateY(-5px);
+}
+
+.post-image {
+  height: 200px;
+  object-fit: cover;
+}
+
+.text-muted {
+  font-size: 0.8rem;
+}
+
+.comment-section {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.d-flex {
+  align-items: center;
+}
+
+.d-flex strong {
+  font-weight: 600;
+}
+
+/* Kichik ekranlar uchun moslashuv */
+@media (max-width: 1200px) {
+  .post-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
+}
   
+@media (max-width: 768px) {
+  .post-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .post-grid {
+    grid-template-columns: 1fr;
+  }
+}
