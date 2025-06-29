@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useMemo } from 'react';
-import io from 'socket.io-client';
+// src/context/NotificationContext.jsx
+import React, { createContext, useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { getNotifications } from '../api/notificationService';
 
 export const NotificationContext = createContext();
@@ -11,61 +12,65 @@ export const NotificationProvider = ({ children }) => {
   const userId = localStorage.getItem('userId');
   const token = localStorage.getItem('token');
 
-  // Faqat o‘qilmaganlar soni
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.isRead).length,
-    [notifications]
-  );
-
   useEffect(() => {
     if (!userId || !token) return;
 
-    const newSocket = io('http://localhost:4000', { transports: ['websocket'] });
-    setSocket(newSocket);
+    const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:4000';
 
-    newSocket.on('connect', () => {
-      newSocket.emit('join', userId);
+    const sock = io(SOCKET_URL, {
+      transports: ['websocket'],
+      withCredentials: true
     });
 
-    // Yangi notification
-    newSocket.on('newNotification', (notification) => {
-      if (notification.receiverId?.toString() === userId) {
-        setNotifications(prev => prev.some(n => n._id === notification._id)
-          ? prev
-          : [notification, ...prev]
-        );
-      }
+    setSocket(sock);
+
+    // Serverga ulanishda userni ulab qo‘yish
+    sock.on('connect', () => {
+      console.log('Socket connected:', sock.id);
+      sock.emit('join', userId);
     });
 
-    // O‘qilgan notification
-    newSocket.on('notificationUpdated', ({ notificationId }) => {
+    // Yangi bildirishnoma kelganda
+    sock.on('newNotification', (notification) => {
+      setNotifications(prev => {
+        if (!prev.some(n => n._id === notification._id)) {
+          return [notification, ...prev];
+        }
+        return prev;
+      });
+    });
+
+    // Bildirishnoma o'qildi
+    sock.on('notificationUpdated', ({ notificationId, isRead }) => {
       setNotifications(prev =>
         prev.map(n =>
-          n._id === notificationId ? { ...n, isRead: true } : n
+          n._id === notificationId ? { ...n, isRead } : n
         )
       );
     });
 
-    // Dastlabki notificationlar
+    // Boshlang‘ich bildirishnomalarni yuklash
     const fetchNotifications = async () => {
       try {
         const res = await getNotifications(userId, token);
         setNotifications(res.data || []);
       } catch (err) {
-        console.error('Fetch Notifications Error:', err);
+        console.error('Bildirishnomalarni olishda xatolik:', err);
+        setNotifications([]);
       }
     };
+
     fetchNotifications();
 
+    // Tozalash (component unmount bo‘lganda)
     return () => {
-      newSocket.off('newNotification');
-      newSocket.off('notificationUpdated');
-      newSocket.disconnect();
+      sock.disconnect();
+      console.log('Socket disconnected');
     };
   }, [userId, token]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, setNotifications, socket, unreadCount }}>
+    <NotificationContext.Provider value={{ notifications, setNotifications, socket }}>
       {children}
     </NotificationContext.Provider>
   );

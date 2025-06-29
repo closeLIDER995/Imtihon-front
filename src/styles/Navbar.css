@@ -1,15 +1,23 @@
+/* Navbar */
 .navbar {
-  background: linear-gradient(to right, #0ea5e9, #3b82f6);
-  padding: 15px 25px;
+background: linear-gradient(90deg, #494949, #000000);
+  padding: 18px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: #fff;
-  position: sticky;
+  position: fixed; /* sticky o‘rniga fixed ishlatyapmiz */
   top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  font-family: 'Roboto', sans-serif;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+  margin-top: 2px;
 }
+ 
 
 .navbar-brand .logo {
   color: #fff;
@@ -39,7 +47,7 @@
 }
 
 .nav-link {
-  color: red;
+  color: rgb(0, 0, 0);
   margin: 0 15px;
   text-decoration: none;
   font-size: 16px;
@@ -51,7 +59,7 @@
 }
 
 .logout-btn {
-  background: #ff4444;
+  background: #000000;
   color: #fff;
   border: none;
   padding: 8px 15px;
@@ -62,7 +70,7 @@
 }
 
 .logout-btn:hover {
-  background-color: #cc0000;
+  background-color: #000000;
   transform: translateY(-2px);
 }
 

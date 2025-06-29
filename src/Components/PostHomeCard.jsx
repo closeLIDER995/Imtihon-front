@@ -1,15 +1,12 @@
 import React from 'react';
 import { Card, CardBody, Button, Spinner } from 'reactstrap';
-import { FaRegHeart, FaHeart, FaRegCommentDots, FaRegEdit, FaTrashAlt } from 'react-icons/fa';
+import { FaRegHeart, FaHeart, FaRegCommentDots } from 'react-icons/fa';
 
-const PostCard = ({
+const HomeCard = ({
   post,
   onLike,
   onComment,
-  onEdit,
-  onDelete,
   likeLoading = false,
-  deleteLoading = false,
   isLiked = false, // hozirgi user like bosganmi
 }) => {
   return (
@@ -45,27 +42,11 @@ const PostCard = ({
               {post.likes?.length || 0}
             </span>
           </Button>
-          <Button color="" onClick={onComment} title="comment">
+          <Button color="" onClick={onComment} title="Comment">
             <FaRegCommentDots style={{ color: '#0ea5e9', fontSize: 22 }} />
             <span style={{ fontWeight: 500, color: '#444', marginLeft: 4 }}>
               {post.comments?.length || 0}
             </span>
-          </Button>
-          <Button color="link" onClick={onEdit} title="Edit">
-            <FaRegEdit style={{ color: '#f59e42', fontSize: 20 }} />
-          </Button>
-          <Button
-            color="link"
-            onClick={onDelete}
-            disabled={deleteLoading}
-            style={{ minWidth: 40 }}
-            title="O‘chirish"
-          >
-            {deleteLoading ? (
-              <Spinner size="sm" color="danger" />
-            ) : (
-              <FaTrashAlt style={{ color: '#ff5252', fontSize: 20 }} />
-            )}
           </Button>
         </div>
       </CardBody>
@@ -73,4 +54,4 @@ const PostCard = ({
   );
 };
 
-export default PostCard;
+export default HomeCard;

@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import './Profile.css';
 import AppNavbar from '../Components/Navbar';
+import Profil from '../assets/Profil.jpg';
 
 const API_URL = 'http://localhost:4000/api';
-const CLOUDINARY_UPLOAD_PRESET = 'unsigned_preset';
-const CLOUDINARY_CLOUD_NAME = 'dobriy011';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -20,23 +19,38 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Comments modal
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [modalPost, setModalPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [commentError, setCommentError] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
 
+  // Profile image upload modal
   const [showImgModal, setShowImgModal] = useState(false);
   const [imgFile, setImgFile] = useState(null);
   const [imgPreview, setImgPreview] = useState(null);
+  const [imgLoading, setImgLoading] = useState(false);
 
+  // Profile edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUsername, setEditUsername] = useState('');
+  const [editSurname, setEditSurname] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editJob, setEditJob] = useState('');
   const [editHobby, setEditHobby] = useState('');
-  const [editError, setEditError] = useState('');
+  const [editCurrentPassword, setEditCurrentPassword] = useState('');
+  const [editNewPassword, setEditNewPassword] = useState('');
+  const [editImgFile, setEditImgFile] = useState(null);
+  const [editImgPreview, setEditImgPreview] = useState(null);
+  const [editMsg, setEditMsg] = useState('');
   const [editLoading, setEditLoading] = useState(false);
 
+  // Like loader per post
+  const [likeLoading, setLikeLoading] = useState({});
+
+  // Follow
   const [followLoading, setFollowLoading] = useState(false);
 
   // Fetch user/profile data, current user, posts
@@ -50,20 +64,20 @@ const ProfilePage = () => {
       }
       const targetUserId = paramUserId || loggedInUserId;
       try {
-        // Profil egasi
+        // User info
         const userResponse = await fetch(`${API_URL}/user/${targetUserId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!userResponse.ok) throw new Error(await userResponse.text());
         setUser(await userResponse.json());
 
-        // Kirgan user (siz)
+        // Current user
         const meResponse = await fetch(`${API_URL}/user/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (meResponse.ok) setCurrentUser(await meResponse.json());
 
-        // Postlar
+        // User posts
         const postsResponse = await fetch(`${API_URL}/post/my-posts/${targetUserId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -86,6 +100,7 @@ const ProfilePage = () => {
 
   // LIKE/UNLIKE
   const handleLike = async (postId, liked) => {
+    setLikeLoading((prev) => ({ ...prev, [postId]: true }));
     try {
       const url = `${API_URL}/post/${liked ? "unlike" : "like"}/${postId}`;
       const response = await fetch(url, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
@@ -104,6 +119,8 @@ const ProfilePage = () => {
       );
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLikeLoading((prev) => ({ ...prev, [postId]: false }));
     }
   };
 
@@ -133,6 +150,7 @@ const ProfilePage = () => {
   const handleCommentSubmit = async () => {
     if (!modalPost || !newComment.trim()) return;
     setCommentError('');
+    setCommentLoading(true);
     try {
       const response = await fetch(`${API_URL}/comment`, {
         method: 'POST',
@@ -144,6 +162,7 @@ const ProfilePage = () => {
       });
       if (!response.ok) {
         setCommentError(await response.text());
+        setCommentLoading(false);
         return;
       }
       const addedComment = await response.json();
@@ -151,6 +170,8 @@ const ProfilePage = () => {
       setNewComment('');
     } catch {
       setCommentError('Komment qo‘shishda xatolik');
+    } finally {
+      setCommentLoading(false);
     }
   };
 
@@ -194,7 +215,6 @@ const ProfilePage = () => {
     }
   };
 
-  // PROFILE IMAGE UPLOAD (Cloudinary)
   const openImgModal = () => {
     setShowImgModal(true);
     setImgFile(null);
@@ -212,33 +232,23 @@ const ProfilePage = () => {
       setImgPreview(URL.createObjectURL(file));
     }
   };
-  const uploadToCloudinary = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
-    const data = await res.json();
-    if (!data.secure_url) throw new Error(data.error?.message || "Cloudinary upload error");
-    return data.secure_url;
-  };
+
   const handleImgUpload = async (e) => {
     e.preventDefault();
     if (!imgFile) return;
+    setImgLoading(true);
     try {
-      const imgUrl = await uploadToCloudinary(imgFile);
+      const formData = new FormData();
+      formData.append('profileImage', imgFile);
+      formData.append('username', user.username);
+      formData.append('surname', user.surname);
+      if (user.job) formData.append('job', user.job);
+      if (user.hobby) formData.append('hobby', user.hobby);
+
       const response = await fetch(`${API_URL}/user/${user._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ profileImage: { url: imgUrl } }),
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
       if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
@@ -250,45 +260,65 @@ const ProfilePage = () => {
     } catch (err) {
       setError("Rasm yuklashda xatolik: " + err.message);
     }
+    setImgLoading(false);
   };
 
-  // EDIT INFO MODAL
+  // EDIT INFO MODAL (Cloudinary orqali rasm ham yuklasa bo‘ladigan)
   const openEditModal = () => {
     setEditUsername(user.username || "");
+    setEditSurname(user.surname || "");
+    setEditEmail(user.email || "");
     setEditJob(user.job || "");
     setEditHobby(user.hobby || "");
-    setEditError('');
+    setEditCurrentPassword('');
+    setEditNewPassword('');
+    setEditImgFile(null);
+    setEditImgPreview(user.profileImage?.url || "");
+    setEditMsg('');
     setShowEditModal(true);
   };
   const closeEditModal = () => {
     setShowEditModal(false);
-    setEditError('');
+    setEditMsg('');
+    setEditImgFile(null);
+    setEditImgPreview(user.profileImage?.url || "");
+    setEditCurrentPassword('');
+    setEditNewPassword('');
   };
+
+  const handleEditImgChange = (e) => {
+    const file = e.target.files[0];
+    setEditImgFile(file);
+    if (file) setEditImgPreview(URL.createObjectURL(file));
+  };
+
   const handleEditSave = async (e) => {
     e.preventDefault();
     setEditLoading(true);
-    setEditError('');
+    setEditMsg('');
     try {
-      const body = { username: editUsername, job: editJob, hobby: editHobby };
-      const response = await fetch(`${API_URL}/user/${user._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
+      const formData = new FormData();
+      formData.append('username', editUsername);
+      formData.append('surname', editSurname);
+      formData.append('email', editEmail);
+      formData.append('job', editJob);
+      formData.append('hobby', editHobby);
+      if (editImgFile) formData.append('profileImage', editImgFile);
+      if (editCurrentPassword) formData.append('currentPassword', editCurrentPassword);
+      if (editNewPassword) formData.append('newPassword', editNewPassword);
+
+      const res = await fetch(`${API_URL}/user/${user._id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      setUser((prev) => ({
-        ...prev,
-        username: data.user.username,
-        job: data.user.job,
-        hobby: data.user.hobby
-      }));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Xatolik");
+      setUser(data.user);
+      setEditMsg("Profil yangilandi!");
       closeEditModal();
     } catch (err) {
-      setEditError('Tahrirlashda xatolik: ' + err.message);
+      setEditMsg(err.message);
     } finally {
       setEditLoading(false);
     }
@@ -325,18 +355,13 @@ const ProfilePage = () => {
         <div className="profile-ig-header">
           <div style={{ position: 'relative' }}>
             <img
-              src={user.profileImage && user.profileImage.url ? user.profileImage.url : "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_items_boosted&w=740"}
+              src={Profil}
               alt="Profile"
               className="profile-ig-avatar"
               onClick={isOwnProfile ? openImgModal : undefined}
               style={{ cursor: isOwnProfile ? 'pointer' : 'default', border: isOwnProfile ? '2px solid #3897f0' : undefined }}
               title={isOwnProfile ? "Rasmni o'zgartirish" : ""}
             />
-            {isOwnProfile && (
-              <button className="profile-img-edit-btn" onClick={openImgModal} title="Rasmni o'zgartirish">
-                <span role="img" aria-label="edit">🖊️</span>
-              </button>
-            )}
           </div>
           <div className="profile-ig-info">
             <div className="profile-ig-username-row">
@@ -348,29 +373,31 @@ const ProfilePage = () => {
               ) : (
                 isFollowing ? (
                   <button className="profile-ig-edit-btn" onClick={() => handleUnfollow(user._id)} disabled={followLoading}>
-                    {followLoading ? "..." : "Unfollow"}
+                    {followLoading ? <span className="btn-small-loader"></span> : "Unfollow"}
                   </button>
                 ) : (
                   <button className="profile-ig-edit-btn" onClick={() => handleFollow(user._id)} disabled={followLoading}>
-                    {followLoading ? "..." : "Follow"}
+                    {followLoading ? <span className="btn-small-loader"></span> : "Follow"}
                   </button>
                 )
               )}
             </div>
+        </div>
             <div className="profile-ig-stats">
               <div className="profile-ig-stat"><span className="profile-ig-stat-value">{posts.length}</span><span className="profile-ig-stat-label">posts</span></div>
               <div className="profile-ig-stat"><span className="profile-ig-stat-value">{user.followers?.length || 0}</span><span className="profile-ig-stat-label">followers</span></div>
               <div className="profile-ig-stat"><span className="profile-ig-stat-value">{user.following?.length || 0}</span><span className="profile-ig-stat-label">following</span></div>
             </div>
-            {/* Kasb va Hobby yonma-yon */}
-            <div className="profile-ig-jobhobby-row" style={{display: 'flex', gap: '24px', marginTop: 8}}>
-              <div><b>Kasbi:</b> <span>{user.job ? user.job : "Ko'rsatilmagan"}</span></div>
-              <div><b>Hobby:</b> <span>{user.hobby ? user.hobby : "Ko'rsatilmagan"}</span></div>
+            <div className="profile-ig-jobsurname-row" style={{display: 'flex', gap: '24px', marginTop: '45px',  }}>
+              <div><b>Familiyasi:</b> <span>{user.surname ? user.surname : "Ko'rsatilmagan"}</span></div>
+              <div><b>Email:</b> <span>{user.email}</span></div>
+            </div>
+            <div className="profile-ig-jobhobby-row" style={{display: 'flex', gap: '24px', marginTop: '-44px',}}>
+              <div className='text-1'><b>Kasbi:</b> <span>{user.job ? user.job : "Ko'rsatilmagan"}</span></div>
             </div>
           </div>
-        </div>
         <div className="profile-ig-posts">
-          <h3>Postlar</h3>
+          <h3 className='h3-post'>Postlar</h3>
           {posts.length > 0 ? (
             <div className="profile-ig-posts-list">
               {posts.map((post) => (
@@ -383,14 +410,19 @@ const ProfilePage = () => {
                     <button
                       className={`like-btn ${post.likes && post.likes.includes(loggedInUserId) ? "liked" : ""}`}
                       onClick={() => handleLike(post._id, post.likes && post.likes.includes(loggedInUserId))}
+                      disabled={!!likeLoading[post._id]}
                     >
-                      ❤️ {post.likes?.length || 0}
+                      {likeLoading[post._id] ?
+                        <span className="btn-small-loader"></span>
+                        :
+                        <>❤️ {post.likes?.length || 0}</>
+                      }
                     </button>
                     <button
                       className="open-comments-btn"
                       onClick={() => openCommentsModal(post)}
                     >
-                      💬 Kommentlar
+                      💬 
                     </button>
                   </div>
                   <div className="profile-ig-post-date">
@@ -420,11 +452,14 @@ const ProfilePage = () => {
                 ref={fileInputRef}
                 onChange={handleImgChange}
                 style={{ marginBottom: 16 }}
+                disabled={imgLoading}
               />
               {imgPreview && (
                 <img src={imgPreview} alt="preview" style={{ width: 100, height: 100, borderRadius: '50%', marginBottom: 16 }} />
               )}
-              <button className="modal-add-comment-btn" type="submit">Saqlash</button>
+              <button className="modal-add-comment-btn" type="submit" disabled={imgLoading} style={{ width: "100%" }}>
+                {imgLoading ? <span className="btn-small-loader"></span> : "Saqlash"}
+              </button>
             </form>
           </div>
         </div>
@@ -448,6 +483,31 @@ const ProfilePage = () => {
                   className="modal-comment-input"
                   required
                   style={{ marginBottom: 12 }}
+                  disabled={editLoading}
+                />
+              </label>
+              <label>
+                Familiyasi:
+                <input
+                  type="text"
+                  value={editSurname}
+                  onChange={e => setEditSurname(e.target.value)}
+                  className="modal-comment-input"
+                  required
+                  style={{ marginBottom: 12 }}
+                  disabled={editLoading}
+                />
+              </label>
+              <label>
+                Email:
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={e => setEditEmail(e.target.value)}
+                  className="modal-comment-input"
+                  required
+                  style={{ marginBottom: 12 }}
+                  disabled={editLoading}
                 />
               </label>
               <div style={{ display: 'flex', gap: 12 }}>
@@ -459,29 +519,46 @@ const ProfilePage = () => {
                     onChange={e => setEditJob(e.target.value)}
                     className="modal-comment-input"
                     placeholder="Kasbingiz"
-                  />
-                </label>
-                <label style={{ flex: 1 }}>
-                  Hobby:
-                  <input
-                    type="text"
-                    value={editHobby}
-                    onChange={e => setEditHobby(e.target.value)}
-                    className="modal-comment-input"
-                    placeholder="Hobbiyingiz"
+                    disabled={editLoading}
                   />
                 </label>
               </div>
-              <button className="modal-add-comment-btn" type="submit" disabled={editLoading} style={{ marginTop: 14 }}>
-                {editLoading ? "Saqlanmoqda..." : "Saqlash"}
+              <label>
+                Profil rasmi:
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ marginTop: 12 }}
+                  onChange={handleEditImgChange}
+                  disabled={editLoading}
+                />
+              </label>
+              {editImgPreview && (
+                <img src={editImgPreview} alt="preview" style={{ width: 80, height: 80, borderRadius: '50%', margin: '10px auto', display: 'block' }} />
+              )}
+              <label className='mb-1 text-center d-block'>eski parolni kiriting ( yangisini qoyish uchun):</label>
+              <input className='input-parol'
+                type="password"
+                value={editCurrentPassword}
+                onChange={e => setEditCurrentPassword(e.target.value)}
+                disabled={editLoading}
+              />  
+              <label className='d-block text-center'>Yangi parolni kiriting:</label>
+              <input className='input-parol'
+                type="password"
+                value={editNewPassword}
+                onChange={e => setEditNewPassword(e.target.value)}
+                disabled={editLoading}
+              />
+              <button className="modal-add-comment-btn" type="submit" disabled={editLoading} style={{ marginTop: 14, width: "100%" }}>
+                {editLoading ? <span className="btn-small-loader"></span> : "Saqlash"}
               </button>
-              {editError && <div className="modal-comment-error">{editError}</div>}
+              {editMsg && <div className="modal-comment-error">{editMsg}</div>}
             </form>
           </div>
         </div>
       )}
 
-      {/* --- COMMENTS MODAL --- */}
       {showCommentsModal && modalPost && (
         <div className="comments-modal-backdrop" onClick={closeCommentsModal}>
           <div className="comments-modal" onClick={e => e.stopPropagation()}>
@@ -517,9 +594,10 @@ const ProfilePage = () => {
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleCommentSubmit(); }}
+                disabled={commentLoading}
               />
-              <button className="modal-add-comment-btn" onClick={handleCommentSubmit}>
-                Qo‘shish
+              <button className="modal-add-comment-btn" onClick={handleCommentSubmit} disabled={commentLoading}>
+                {commentLoading ? <span className="btn-small-loader"></span> : "Qo‘shish"}
               </button>
             </div>
             {commentError && <div className="modal-comment-error">{commentError}</div>}

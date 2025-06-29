@@ -7,15 +7,19 @@ const NotificationModal = ({ notification, onClose }) => {
 
   const handleProfileClick = () => {
     const senderId = notification?.senderId?._id || notification?.senderId;
-
     if (senderId) {
       navigate(`/profile/${senderId}`);
       onClose();
     } else {
-      console.error('Sender ID topilmadi:', notification);
-      alert('Profilga o‘tishda xatolik yuz berdi. Sender ID topilmadi.');
+      alert('An error occurred while switching profiles. Sender ID not found.');
     }
   };
+
+  const username =
+    notification?.senderId?.username ||
+    notification?.senderUsername ||
+    (typeof notification?.senderId === "string" ? notification.senderId : null) ||
+    "Users";
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -25,25 +29,38 @@ const NotificationModal = ({ notification, onClose }) => {
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          <p><strong>Turi:</strong> {notification?.type || 'Noma’lum'}</p>
-          <p><strong>Xabar:</strong> {notification?.message || 'Xabar yo‘q'}</p>
-          <p><strong>Kimdan:</strong> {notification?.senderId?.username || 'Unknown'}</p>
-          <p><strong>Vaqt:</strong> {notification?.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Noma’lum vaqt'}</p>
-          {notification?.postId && notification.postId.postImage && notification.postId.postImage.url ? (
+          <p>
+            <strong>Turi:</strong> {notification?.type || 'Unknown'}
+          </p>
+          <p>
+            <strong>Xabar:</strong> {notification?.message || 'No message'}
+          </p>
+          <p>
+            <strong>Kimdan:</strong> {username}
+          </p>
+          <p>
+            <strong>Vaqt:</strong>{' '}
+            {notification?.createdAt
+              ? new Date(notification.createdAt).toLocaleString()
+              : 'Unknown time'}
+          </p>
+          {notification?.postId && notification.postId.content ? (
             <div>
               <p><strong>Post:</strong></p>
               <img
-                src={notification.postId.postImage.url}
+                src={notification.postId.postImage?.url || ''}
                 alt="Post"
                 style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }}
               />
               <p>{notification.postId.content}</p>
             </div>
+          ) : notification?.type === 'follow' ? (
+            <p><strong>Post:</strong> No</p>
           ) : (
-            <p><strong>Post:</strong> {notification?.type === 'follow' ? 'Yo‘q' : 'Post topilmadi'}</p>
+            <p><strong>Post:</strong> Post not found</p>
           )}
           <button className="btn btn-primary mt-3" onClick={handleProfileClick}>
-            Profilga O‘tish
+            Go to Profile
           </button>
         </div>
       </div>

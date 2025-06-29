@@ -1,27 +1,45 @@
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background-color: #f8f9fa;
-  margin: 0;
-  padding: 0;
+/* Light & Dark rejimlar uchun asosiy classlar */
+body.light {
+  background-color: #f5f5f5;
+  color: #222;
+  transition: background 0.3s, color 0.3s;
 }
 
-.container {
-  max-width: 1140px;
-  margin: auto;
-  padding: 0 15px;
+body.dark {
+  background-color: #121212;
+  color: #f1f1f1;
+  transition: background 0.3s, color 0.3s;
 }
 
-@media (max-width: 768px) {
-  .container {
-    padding: 0 10px;
-  }
+/* Universal post-card ranglar */
+.post-card {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
 
-  h1, h2, h3 {
-    font-size: 1.3rem;
-  }
+body.light .post-card {
+  --card-bg: #ffffff;
+  --text-color: #000000;
+}
 
-  button {
-    width: 100%;
-    margin-top: 0.5rem;
-  }
+body.dark .post-card {
+  --card-bg: #1f1f1f;
+  --text-color: #f1f1f1;
+}
+
+/* Navbar uchun rang moslashuv */
+body.dark .navbar {
+  background: #222 !important;
+  color: #fff;
+}
+
+body.dark .nav-link,
+body.dark .logout-btn {
+  color: #fff !important;
+}
+
+body.dark .nav-link:hover,
+body.dark .logout-btn:hover {
+  color: #ddd !important;
 }

@@ -1,28 +1,40 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { NotificationContext } from '../Page/NotificationContex';
 import '../styles/Navbar.css';
+import SocialApp from '../assets/Social App.jpg'
 
 const AppNavbar = () => {
-  const { unreadCount } = useContext(NotificationContext);
+  const { notifications } = useContext(NotificationContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role'); // <-- QO‘SHILDI
+
+  const unreadCount = useMemo(
+    () => notifications.filter((notif) => !notif.isRead).length,
+    [notifications]
+  );
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
+    localStorage.removeItem('role'); // chiqishda role ni ham o‘chir!
     navigate('/auth', { replace: true });
   };
 
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
   return (
     <nav className="navbar">
-      <div className='container'>
+      <div className="container">
         <div className="navbar-brand">
-          <Link to="/home" className="logo" style={{ color: "white" }}>SocialApp</Link>
+          <Link to="/home" className="SocialAPP" style={{ color: 'whit' }}>
+          <img src={SocialApp}  style={{ borderRadius: '100px', width: '100px', height: '95px' }}alt="" />
+          </Link>
         </div>
-        <div className="menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        <div className="menu-toggle" onClick={toggleMenu}>
           <span className="bar"></span>
           <span className="bar"></span>
           <span className="bar"></span>
@@ -36,6 +48,12 @@ const AppNavbar = () => {
             Notifications
             {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
           </Link>
+          {/* Faqat admin uchun */}
+          {role === "101" && (
+            <Link to="/admin" className={`nav-link ${location.pathname === '/admin' ? 'active-link' : ''}`}>
+              Admin
+            </Link>
+          )}
           {token && (
             <button onClick={handleLogout} className="logout-btn">Logout</button>
           )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardBody, CardTitle, CardImg, Input, Button } from 'reactstrap';
+import { Card, CardBody, CardTitle, CardImg, Input, Button, Spinner } from 'reactstrap';
 import { FaUserPlus, FaUserMinus } from 'react-icons/fa';
 import AppNavbar from '../Components/Navbar';
 
@@ -13,32 +13,43 @@ const UserSearch = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(true);
+  const [followLoading, setFollowLoading] = useState({});
   const debounceTimeout = useRef(null);
   const navigate = useNavigate();
 
+  // 👤 Foydalanuvchi ma'lumotini olish
+  const fetchCurrentUser = async () => {
+    setUserLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCurrentUser(res.data);
+      setError(null);
+    } catch {
+      setError('Foydalanuvchi ma’lumotlari topilmadi');
+    } finally {
+      setUserLoading(false);
+    }
+  };
+
+  // ➕ Sahifa yuklanganda tokenni tekshirish va foydalanuvchini olish
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/auth', { replace: true });
       return;
     }
-    const fetchCurrentUser = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setCurrentUser(response.data);
-      } catch {
-        setError('Foydalanuvchi ma’lumotlari topilmadi');
-      }
-    };
     fetchCurrentUser();
   }, [navigate]);
 
+  // 🔍 Foydalanuvchilarni umumiy olish
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return;
-    if (searchQuery.trim() !== '') return;
+    if (!token || searchQuery.trim() !== '') return;
+
     setLoading(true);
     axios
       .get(`${API_URL}`, {
@@ -55,10 +66,11 @@ const UserSearch = () => {
       .finally(() => setLoading(false));
   }, [searchQuery]);
 
+  // 🔍 Qidiruv bo'yicha foydalanuvchilarni olish (debounce)
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return;
-    if (searchQuery.trim() === '') return;
+    if (!token || searchQuery.trim() === '') return;
+
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 
     debounceTimeout.current = setTimeout(async () => {
@@ -72,128 +84,143 @@ const UserSearch = () => {
       } catch {
         setUsers([]);
         setError('Foydalanuvchilarni qidirishda xatolik');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }, 350);
+    }, 300);
 
     return () => clearTimeout(debounceTimeout.current);
   }, [searchQuery]);
 
-  // Yangi follow/unfollow handler
+  // 🤝 Follow/Unfollow qilish
   const handleFollow = async (userId, isFollowing) => {
+    setFollowLoading((prev) => ({ ...prev, [userId]: true }));
     try {
       const url = `${API_URL}/${isFollowing ? 'unfollow' : 'follow'}/${userId}`;
-      const response = await axios.put(
+      await axios.put(
         url,
         {},
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }
       );
-      // Backenddan currentUser obyektini kutamiz (faqat following massivini emas, to‘liq user obyektini)
-      if (response.data.currentUser) {
-        setCurrentUser(response.data.currentUser);
-      } else if (response.data.following) {
-        // Agar faqat following massivini qaytarilsa
-        setCurrentUser((prev) =>
-          prev
-            ? {
-                ...prev,
-                following: response.data.following,
-              }
-            : prev
-        );
-      }
-      // Users massivini ham yangilash (isFollowed ni userga qo‘shish)
-      setUsers((prev) =>
-        prev.map((user) =>
-          user._id === userId
-            ? { ...user, isFollowed: !isFollowing }
-            : user
-        )
-      );
+      // ✅ currentUser qayta olish (eng ishonchli usul)
+      await fetchCurrentUser();
       setError(null);
     } catch {
       setError('Follow/Unfollow qilishda xatolik');
+    } finally {
+      setFollowLoading((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
-  const handleUserClick = (userId) => {
-    navigate(`/profile/${userId}`);
-  };
-
-  // Faqat currentUser.following ni tekshirib isFollowing aniqlanadi!
+  // 💡 Bu userni follow qilganmizmi?
   const isFollowing = (userId) =>
     currentUser &&
     Array.isArray(currentUser.following) &&
     currentUser.following.some((id) => String(id) === String(userId));
 
+  // 🔎 O'zini o'zi chiqarib tashlash
+  const filteredUsers = users.filter(
+    (user) => !(currentUser && user._id === currentUser._id)
+  );
+
+  // ✅ Render
   return (
     <>
       <AppNavbar />
       <div className="container mt-5">
         <h2 className="text-center mb-4">Foydalanuvchilar</h2>
-        {error && <div className="alert alert-danger">{error}</div>}
-        <Input
-          type="text"
-          placeholder="Foydalanuvchi nomini qidirish..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          autoFocus
-        />
-        <div className="mt-4">
-          {loading && <p className="text-center">Yuklanmoqda...</p>}
-          {!loading && users.length === 0 && (
-            <p className="text-center">Foydalanuvchilar topilmadi</p>
-          )}
-          {users.map((user) => (
-            <Card
-              key={user._id}
-              className="mb-3"
-              style={{ cursor: 'pointer', background: '#f9f9f9', transition: '0.2s' }}
-            >
-              <CardBody className="d-flex align-items-center">
-                {user.profileImage?.url && (
-                  <CardImg
-                    src={user.profileImage.url}
-                    alt="Profile"
+        {userLoading ? (
+          <div className="text-center">
+            <Spinner size="lg" color="primary" />
+          </div>
+        ) : (
+          <>
+            {error && <div className="alert alert-danger">{error}</div>}
+            <Input
+              type="text"
+              placeholder="Foydalanuvchi nomini qidirish..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <div className="mt-4">
+              {loading && <p className="text-center">Yuklanmoqda...</p>}
+              {!loading && filteredUsers.length === 0 && (
+                <p className="text-center">Foydalanuvchilar topilmadi</p>
+              )}
+              {filteredUsers.map((user) => {
+                const currentlyFollowing = isFollowing(user._id);
+                return (
+                  <Card
+                    key={user._id}
+                    className="mb-3"
                     style={{
-                      width: '50px',
-                      height: '50px',
-                      borderRadius: '50%',
-                      marginRight: '15px',
+                      cursor: 'pointer',
+                      background: '#f9f9f9',
+                      transition: '0.2s',
+                      boxShadow: 'rgb(170 91 172) 0px 3px 10px',
                     }}
-                  />
-                )}
-                <CardTitle
-                  tag="h5"
-                  className="mb-0"
-                  style={{ flex: 1, margin: 0 }}
-                  onClick={() => handleUserClick(user._id)}
-                >
-                  {user.username}
-                </CardTitle>
-                <div>
-                  {currentUser && user._id !== currentUser._id && (
-                    <Button
-                      color={isFollowing(user._id) ? 'danger' : 'success'}
-                      size="sm"
-                      onClick={() => handleFollow(user._id, isFollowing(user._id))}
-                    >
-                      {isFollowing(user._id) ? (
-                        <>
-                          <FaUserMinus /> Unfollow
-                        </>
-                      ) : (
-                        <>
-                          <FaUserPlus /> Follow
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </CardBody>
-            </Card>
-          ))}
-        </div>
+                  >
+                    <CardBody className="d-flex align-items-center">
+                      <div
+                        onClick={() => navigate(`/profile/${user._id}`)}
+                        className="d-flex align-items-center flex-grow-1"
+                      >
+                        <CardImg
+                          src={
+                            user.profileImage?.url
+                              ? user.profileImage.url
+                              : 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg'
+                          }
+                          alt="Profile"
+                          style={{
+                            width: '50px',
+                            height: '50px',
+                            borderRadius: '50%',
+                            marginRight: '15px',
+                            objectFit: 'cover',
+                            background: '#e0e0e0',
+                          }}
+                        />
+                        <CardTitle
+                          tag="h5"
+                          className="mb-0"
+                          style={{ flex: 1, margin: 0 }}
+                        >
+                          {user.username}
+                        </CardTitle>
+                      </div>
+                      <div>
+                        <Button
+                          color={currentlyFollowing ? 'danger' : 'success'}
+                          size="sm"
+                          onClick={() =>
+                            handleFollow(user._id, currentlyFollowing)
+                          }
+                          disabled={!!followLoading[user._id]}
+                        >
+                          {followLoading[user._id] ? (
+                            <Spinner size="sm" color="secondary" />
+                          ) : currentlyFollowing ? (
+                            <>
+                              <FaUserMinus /> Unfollow
+                            </>
+                          ) : (
+                            <>
+                              <FaUserPlus /> Follow
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </>
   );

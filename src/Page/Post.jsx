@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Button, Form, FormGroup, Label, Input, Card, CardBody, Modal, ModalHeader, ModalBody } from 'reactstrap';
+import {
+  Button, Form, FormGroup, Label, Input, Card, CardBody,
+  Modal, ModalHeader, ModalBody, Spinner
+} from 'reactstrap';
+import { FaEdit, FaTrash, FaCheck, FaTimes, FaPaperPlane } from 'react-icons/fa';
 import io from 'socket.io-client';
 import AppNavbar from '../Components/Navbar';
 import PostCard from '../Components/PostCard';
+import './styles.css';
 
 const socket = io('http://localhost:4000', {
   reconnection: true,
@@ -14,10 +19,14 @@ const socket = io('http://localhost:4000', {
 
 const Post = () => {
   const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingPostId, setEditingPostId] = useState(null);
   const [newPost, setNewPost] = useState({ description: '', file: null });
+  const [postActionLoading, setPostActionLoading] = useState(false);
+  const [postDeleteLoading, setPostDeleteLoading] = useState({});
+  const [postLikeLoading, setPostLikeLoading] = useState({});
   const [error, setError] = useState(null);
 
   // Comment modal uchun
@@ -27,6 +36,11 @@ const Post = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [commentError, setCommentError] = useState(null);
+
+  // Comment loaderlar
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentDeleteLoading, setCommentDeleteLoading] = useState({});
+  const [commentUpdateLoading, setCommentUpdateLoading] = useState({});
 
   const navigate = useNavigate();
   const API_URL = 'http://localhost:4000/api/post';
@@ -44,21 +58,24 @@ const Post = () => {
 
     const fetchMyPosts = async () => {
       try {
+        setPostsLoading(true);
         const endpoint = `${API_URL}/my-posts/${userId}`;
         const response = await axios.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setPosts(response.data || []);
+        setPostsLoading(false);
       } catch (err) {
+        setPostsLoading(false);
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('userId');
           navigate('/auth', { replace: true });
         } else if (err.response?.status === 404) {
           setPosts([]);
-          setError('Postlar topilmadi');
+          setError('Posts not found');
         } else {
-          setError(err.response?.data?.message || 'Postlarni yuklashda xatolik');
+          setError(err.response?.data?.message || 'Error in uploading posts');
         }
       }
     };
@@ -79,7 +96,6 @@ const Post = () => {
             : post
         )
       );
-      // Agar modal ochiq va shu postga comment bo'lsa, activeCommentPost-ni ham yangilaymiz
       setActiveCommentPost((prev) =>
         prev && prev._id === comment.postId
           ? {
@@ -106,6 +122,7 @@ const Post = () => {
       setNewPost({ description: '', file: null });
       setEditMode(false);
       setEditingPostId(null);
+      setError(null);
     }
   };
 
@@ -134,7 +151,7 @@ const Post = () => {
 
   const handleCreatePost = async () => {
     if (!newPost.description.trim()) {
-      setError('Post matni bo‘sh bo‘lmasligi kerak!');
+      setError('The post text should not be empty!');
       return;
     }
 
@@ -145,6 +162,7 @@ const Post = () => {
     }
 
     try {
+      setPostActionLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.post(API_URL, formData, {
         headers: {
@@ -155,13 +173,15 @@ const Post = () => {
       setPosts([response.data.post, ...posts]);
       toggleModal();
     } catch (err) {
-      setError(err.response?.data?.message || 'Post yaratishda xatolik');
+      setError(err.response?.data?.message || 'Error creating post');
+    } finally {
+      setPostActionLoading(false);
     }
   };
 
   const handleUpdatePost = async () => {
     if (!newPost.description.trim()) {
-      setError('Post matni bo‘sh bo‘lmasligi kerak!');
+      setError('The post text should not be empty!');
       return;
     }
 
@@ -172,6 +192,7 @@ const Post = () => {
     }
 
     try {
+      setPostActionLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.put(`${API_URL}/${editingPostId}`, formData, {
         headers: {
@@ -182,13 +203,16 @@ const Post = () => {
       setPosts(posts.map((post) => (post._id === editingPostId ? response.data.post : post)));
       toggleModal();
     } catch (err) {
-      setError(err.response?.data?.message || 'Post yangilashda xatolik');
+      setError(err.response?.data?.message || 'Error in updating the post');
+    } finally {
+      setPostActionLoading(false);
     }
   };
 
   const handleDeletePost = async (postId) => {
     if (window.confirm('Bu postni o‘chirishni xohlaysizmi?')) {
       try {
+        setPostDeleteLoading((prev) => ({ ...prev, [postId]: true }));
         const token = localStorage.getItem('token');
         await axios.delete(`${API_URL}/${postId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -196,12 +220,15 @@ const Post = () => {
         setPosts(posts.filter((post) => post._id !== postId));
       } catch (err) {
         setError(err.response?.data?.message || 'Post o‘chirishda xatolik');
+      } finally {
+        setPostDeleteLoading((prev) => ({ ...prev, [postId]: false }));
       }
     }
   };
 
   const handleLike = async (postId) => {
     try {
+      setPostLikeLoading((prev) => ({ ...prev, [postId]: true }));
       const token = localStorage.getItem('token');
       const response = await axios.put(`${API_URL}/like/${postId}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
@@ -219,23 +246,26 @@ const Post = () => {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Like qo‘yishda xatolik');
+    } finally {
+      setPostLikeLoading((prev) => ({ ...prev, [postId]: false }));
     }
   };
 
   // Comment create
-  const handleCommentSubmit = async () => {
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
     if (!commentText.trim()) {
       setCommentError('Komment bo‘sh bo‘lmasligi kerak!');
       return;
     }
     try {
+      setCommentLoading(true);
       const token = localStorage.getItem('token');
       await axios.post(
         'http://localhost:4000/api/comment',
         { postId: activeCommentPost._id, text: commentText },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // posts va activeCommentPost-ni yangilamaysiz!
       setCommentText('');
       setCommentError(null);
 
@@ -251,6 +281,8 @@ const Post = () => {
       }
     } catch (err) {
       setCommentError(err.response?.data?.message || 'Komment yozishda xatolik');
+    } finally {
+      setCommentLoading(false);
     }
   };
 
@@ -258,6 +290,7 @@ const Post = () => {
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm("Kommentni o‘chirishni xohlaysizmi?")) return;
     try {
+      setCommentDeleteLoading((prev) => ({ ...prev, [commentId]: true }));
       const token = localStorage.getItem('token');
       await axios.delete(`http://localhost:4000/api/comment/${commentId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -286,6 +319,8 @@ const Post = () => {
       );
     } catch (err) {
       setCommentError('Komment o‘chirishda xatolik');
+    } finally {
+      setCommentDeleteLoading((prev) => ({ ...prev, [commentId]: false }));
     }
   };
 
@@ -300,6 +335,7 @@ const Post = () => {
       return;
     }
     try {
+      setCommentUpdateLoading((prev) => ({ ...prev, [editingCommentId]: true }));
       const token = localStorage.getItem('token');
       const response = await axios.put(
         `http://localhost:4000/api/comment/${editingCommentId}`,
@@ -337,6 +373,8 @@ const Post = () => {
       setCommentError(null);
     } catch (err) {
       setCommentError('Komment tahrirlashda xatolik');
+    } finally {
+      setCommentUpdateLoading((prev) => ({ ...prev, [editingCommentId]: false }));
     }
   };
 
@@ -345,32 +383,55 @@ const Post = () => {
     setEditingPostId(post._id);
     setNewPost({ description: post.content, file: null });
     setModal(true);
+    setError(null);
   };
 
   return (
     <>
       <AppNavbar />
-      <div className="text-center mt-5">
-        {error && <div className="alert alert-danger">{error}</div>}
-        <Button color="primary" onClick={toggleModal}>
-          + Yangi Post Qo‘shish
-        </Button>
-      </div>
+<div className="text-center mt-5">
+  {error && <div className="alert alert-danger">{error}</div>}
+  
+  <button
+    onClick={toggleModal}
+    style={{
+      backgroundColor: 'rgb(170 91 172)',
+      color: 'white',
+      border: 'none',
+      padding: '10px 16px',
+      borderRadius: '6px',
+      cursor: 'pointer'
+    }}
+  >
+    + Yangi Post Qo‘shish
+  </button>
+</div>
+
 
       <div className="post-grid mt-4">
-        {posts.length === 0 ? (
+        {postsLoading ? (
+          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 200 }}>
+            <Spinner color="primary" style={{ width: 60, height: 60 }} />
+          </div>
+        ) : posts.length === 0 ? (
           <p className="text-center">Hozircha postlar yo‘q</p>
         ) : (
-          posts.map((post) => (
-            <PostCard
-              key={post._id}
-              post={post}
-              onLike={handleLike}
-              onComment={openCommentModal}
-              onEdit={() => openEditModal(post)}
-              onDelete={() => handleDeletePost(post._id)}
-            />
-          ))
+          posts.map((post) => {
+            const isLiked = Array.isArray(post.likes) && post.likes.includes(userId);
+            return (
+              <PostCard
+                key={post._id}
+                post={post}
+                onLike={() => handleLike(post._id)}
+                onComment={() => openCommentModal(post)}
+                onEdit={() => openEditModal(post)}
+                onDelete={() => handleDeletePost(post._id)}
+                likeLoading={!!postLikeLoading[post._id]}
+                deleteLoading={!!postDeleteLoading[post._id]}
+                isLiked={isLiked}
+              />
+            );
+          })
         )}
       </div>
 
@@ -417,8 +478,15 @@ const Post = () => {
                   color="dark"
                   onClick={editMode ? handleUpdatePost : handleCreatePost}
                   block
+                  disabled={postActionLoading}
                 >
-                  {editMode ? 'Yangilash' : 'Yaratish'}
+                  {postActionLoading ? (
+                    <>
+                      <Spinner size="sm" color="light" /> {editMode ? 'Yangilash...' : 'Yaratish...'}
+                    </>
+                  ) : (
+                    editMode ? 'Yangilash' : 'Yaratish'
+                  )}
                 </Button>
               </Form>
             </div>
@@ -426,63 +494,114 @@ const Post = () => {
         </Card>
       </Modal>
 
-      {/* Comment modal */}
-      <Modal isOpen={commentModal} toggle={closeCommentModal} size="md" centered>
+      {/* Comment modal - loaderli */}
+      <Modal isOpen={commentModal} toggle={closeCommentModal} size="md" centered className="comment-modal">
         <ModalHeader toggle={closeCommentModal}>Kommentlar</ModalHeader>
         <ModalBody>
           {activeCommentPost && (
             <>
-              <div>
+              <div className="comment-list">
                 {activeCommentPost.comments && activeCommentPost.comments.length > 0 ? (
                   activeCommentPost.comments.map((comment) => (
-                    <div key={comment._id} className="mb-3 p-2 border rounded">
-                      <div>
-                        <b>{comment.userId?.username || 'Anonim'}</b>:
-                        {editingCommentId === comment._id ? (
-                          <>
-                            <Input
-                              type="text"
+                    <div key={comment._id} className="comment-item">
+                      <div className="comment-top">
+                        <div>
+                          <span className="comment-username">{comment.userId?.username || "Anonim"}:</span>
+                          {editingCommentId === comment._id ? (
+                            <input
+                              className="comment-input"
                               value={editingCommentText}
-                              onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="my-2"
+                              onChange={e => setEditingCommentText(e.target.value)}
+                              disabled={!!commentUpdateLoading[comment._id]}
                             />
-                            <Button size="sm" color="success" onClick={handleUpdateComment} className="me-2">Saqlash</Button>
-                            <Button size="sm" color="secondary" onClick={() => setEditingCommentId(null)}>Bekor qilish</Button>
-                          </>
-                        ) : (
+                          ) : (
+                            <span className="comment-text">{comment.text}</span>
+                          )}
+                        </div>
+                        {comment.userId?._id === userId && (
                           <>
-                            <span className="ms-2">{comment.text}</span>
-                            {comment.userId?._id === userId && (
-                              <>
-                                <Button size="sm" color="warning" className="ms-2"
+                            {editingCommentId === comment._id ? (
+                              <div className="comment-actions comment-actions-below">
+                                <button
+                                  className="comment-action-btn edit"
+                                  onClick={handleUpdateComment}
+                                  disabled={!!commentUpdateLoading[comment._id]}
+                                  title="Saqlash"
+                                >
+                                  {commentUpdateLoading[comment._id] ? (
+                                    <Spinner size="sm" color="light" />
+                                  ) : (
+                                    <FaCheck />
+                                  )}
+                                </button>
+                                <button
+                                  className="comment-action-btn delete"
+                                  onClick={() => setEditingCommentId(null)}
+                                  disabled={!!commentUpdateLoading[comment._id]}
+                                  title="Bekor qilish"
+                                >
+                                  <FaTimes />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="comment-actions">
+                                <button
+                                  className="comment-action-btn edit"
                                   onClick={() => handleEditComment(comment)}
-                                  >Tahrirlash</Button>
-                                <Button size="sm" color="danger" className="ms-2"
+                                  disabled={!!commentUpdateLoading[comment._id]}
+                                  title="Tahrirlash"
+                                >
+                                  {commentUpdateLoading[comment._id] ? (
+                                    <Spinner size="sm" color="light" />
+                                  ) : (
+                                    <FaEdit />
+                                  )}
+                                </button>
+                                <button
+                                  className="comment-action-btn delete"
                                   onClick={() => handleDeleteComment(comment._id)}
-                                  >O‘chirish</Button>
-                              </>
+                                  disabled={!!commentDeleteLoading[comment._id]}
+                                  title="O‘chirish"
+                                >
+                                  {commentDeleteLoading[comment._id] ? (
+                                    <Spinner size="sm" color="light" />
+                                  ) : (
+                                    <FaTrash />
+                                  )}
+                                </button>
+                              </div>
                             )}
                           </>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.8em', color: '#888' }}>
+                      <div className="comment-meta">
                         {new Date(comment.createdAt).toLocaleString()}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div>Komentlar yo‘q</div>
+                  <div style={{ textAlign: "center", color: "#9ea5b5", fontSize: 16 }}>
+                    Kommentlar yo‘q
+                  </div>
                 )}
               </div>
-              <Form inline className="d-flex mt-2" onSubmit={e => { e.preventDefault(); handleCommentSubmit(); }}>
-                <Input
+              <Form className="comment-modal-footer" onSubmit={handleCommentSubmit}>
+                <input
                   type="text"
+                  className="comment-input"
                   placeholder="Komment yozing..."
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="me-2"
+                  onChange={e => setCommentText(e.target.value)}
+                  disabled={commentLoading}
                 />
-                <Button color="primary" onClick={handleCommentSubmit}>Yuborish</Button>
+                <button
+                  className="comment-send-btn"
+                  type="submit"
+                  disabled={commentLoading || !commentText.trim()}
+                  title="Yuborish"
+                >
+                  {commentLoading ? <Spinner size="sm" color="light" /> : <FaPaperPlane />}
+                </button>
               </Form>
               {commentError && <div className="text-danger mt-2">{commentError}</div>}
             </>

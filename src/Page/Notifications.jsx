@@ -1,12 +1,13 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NotificationModal from './ModalNotification';
 import { NotificationContext } from './NotificationContex';
 import AppNavbar from '../Components/Navbar';
 import {
+  getNotifications,
   readNotification,
   deleteNotification,
-  deleteAllNotifications
+  deleteAllNotifications,
 } from '../api/notificationService';
 import './styles.css';
 
@@ -17,15 +18,69 @@ const Notifications = () => {
   const userId = localStorage.getItem('userId');
   const token = localStorage.getItem('token');
 
+  const getUsername = notif =>
+    notif.senderId?.username ||
+    notif.senderUsername ||
+    (typeof notif.senderId === "string" ? notif.senderId : null) ||
+    "User";
+
+  useEffect(() => {
+    if (!userId || !token) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      navigate('/auth', { replace: true });
+      return;
+    }
+    const fetchData = async () => {
+      try {
+        const res = await getNotifications(userId, token);
+        setNotifications(res.data || []);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          navigate('/auth', { replace: true });
+        }
+      }
+    };
+    fetchData();
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    if (selectedNotification && !selectedNotification.isRead) {
+      (async () => {
+        try {
+          await readNotification(selectedNotification._id, token);
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif._id === selectedNotification._id
+                ? { ...notif, isRead: true }
+                : notif
+            )
+          );
+          if (socket) {
+            socket.emit('notificationRead', {
+              notificationId: selectedNotification._id,
+              userId
+            });
+          }
+        } catch (err) {/* ignore */ }
+      })();
+    }
+    // eslint-disable-next-line
+  }, [selectedNotification]);
+
   const clearAll = async () => {
-    if (window.confirm('Barcha bildirishnomalarni o‘chirishni xohlaysizmi?')) {
+    if (window.confirm('Do you want to delete all notifications?')) {
       try {
         await deleteAllNotifications(userId, token);
         setNotifications([]);
         setSelectedNotification(null);
       } catch (err) {
         if (err.response?.status === 401) {
-          localStorage.clear();
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
           navigate('/auth', { replace: true });
         }
       }
@@ -33,38 +88,24 @@ const Notifications = () => {
   };
 
   const deleteOne = async (id) => {
-    if (!window.confirm('Ushbu bildirishnomani o‘chirishni xohlaysizmi?')) return;
-    try {
-      await deleteNotification(id, token);
-      setNotifications(prev => prev.filter(n => n._id !== id));
-      if (selectedNotification?._id === id) setSelectedNotification(null);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        localStorage.clear();
-        navigate('/auth', { replace: true });
-      }
-    }
-  };
-
-  const markAsRead = async (id) => {
-    try {
-      const response = await readNotification(id, token);
-      if (response.status === 200) {
-        setNotifications(prev =>
-          prev.map(n => (n._id === id ? { ...n, isRead: true } : n))
-        );
-        socket?.emit('notificationUpdated', { notificationId: id });
-      }
-    } catch (err) {
-      if (err.response?.status === 401) {
-        localStorage.clear();
-        navigate('/auth', { replace: true });
+    if (window.confirm('Do you want to delete this notification?')) {
+      try {
+        await deleteNotification(id, token);
+        setNotifications((prev) => prev.filter((notif) => notif._id !== id));
+        if (selectedNotification?._id === id) setSelectedNotification(null);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          navigate('/auth', { replace: true });
+        } else {
+          alert('Error in deleting the notification: ' + (err.response?.data?.message || err.message || 'Server error'));
+        }
       }
     }
   };
 
   const handleNotificationClick = (notif) => {
-    if (!notif.isRead) markAsRead(notif._id);
     setSelectedNotification(notif);
   };
 
@@ -79,7 +120,7 @@ const Notifications = () => {
       <div className="notif-container">
         <div className="notif-box">
           {notifications.length === 0 ? (
-            <p className="notif-empty">Hozircha bildirishnomalar yo‘q</p>
+            <p className="notif-empty">Currently, there are no notifications.</p>
           ) : (
             notifications.map((notif) => (
               <div
@@ -89,15 +130,22 @@ const Notifications = () => {
               >
                 <div className="notif-content">
                   <span className="notif-icon">
-                    {notif.type === 'follow' ? '❤️' : notif.type === 'comment' ? '💬' : '👍'}
+                    {notif.type === 'follow'
+                      ? '❤️'
+                      : notif.type === 'comment'
+                        ? '💬'
+                        : '👍'}
                   </span>
                   <div className="notif-text">
                     <span
                       className="notif-username"
-                      onClick={(e) => handleUsernameClick(notif.senderId?._id, e)}
+                      onClick={(e) => handleUsernameClick(
+                        notif.senderId?._id || notif.senderId,
+                        e
+                      )}
                       style={{ cursor: 'pointer', color: '#007bff' }}
                     >
-                      {notif.senderId?.username || 'Noma’lum'}
+                      {getUsername(notif)}
                     </span>{' '}
                     {notif.message}
                     <p className="notif-time">
@@ -112,18 +160,17 @@ const Notifications = () => {
                     deleteOne(notif._id);
                   }}
                 >
-                  O‘chirish
+                  Delete
                 </button>
               </div>
             ))
           )}
           {notifications.length > 0 && (
             <button className="notif-clear-btn" onClick={clearAll}>
-              Barchasini O‘chirish
+              Delete All
             </button>
           )}
         </div>
-
         {selectedNotification && (
           <NotificationModal
             notification={selectedNotification}
