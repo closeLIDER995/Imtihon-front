@@ -22,114 +22,70 @@ const AuthForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    console.log("Yuborilgan formData:", formData);
 
     try {
       const response = isSignup
         ? await register(formData)
-        : await login(formData);
+        : await login({ email: formData.email, password: formData.password });
 
       const data = response.data;
 
-      if (data && data.token && data.userId && data.user && typeof data.user.role !== 'undefined') {
+      if (data.token && data.userId && data.user) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId.toString());
-        localStorage.setItem('role', data.user.role.toString()); // <-- ROLE ni ham saqlab qo‘yamiz
+        localStorage.setItem('role', data.user.role.toString());
 
-        toast.success(isSignup ? 'Signup Success' : 'Login Success', {
-          position: "top-right",
-          autoClose: 10000,
-        });
+        toast.success(isSignup ? 'Signup Success' : 'Login Success');
         navigate('/home', { replace: true });
       } else {
-        setError(data?.message || 'An incorrect response came from the server.');
-        toast.error(isSignup ? 'Signup Denied' : 'Login Denied', {
-          position: "top-right",
-          autoClose: 10000,
-        });
+        setError(data.message || 'Serverdan noto‘g‘ri javob keldi.');
+        toast.error(data.message || 'Xatolik yuz berdi');
       }
     } catch (error) {
-      setError(error.response?.data?.message || error.message || 'Error connecting to the server');
-      toast.error(isSignup ? 'Signup Denied' : 'Login Denied', {
-        position: "top-right",
-        autoClose: 10000,
-      });
+      console.error("Login error:", error);
+      setError(error.response?.data?.message || 'Serverga ulanishda xatolik');
+      toast.error(error.response?.data?.message || 'Xatolik');
     }
   };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (token && token !== 'null' && userId && userId !== 'null') {
-      navigate('/home', { replace: true });
-    }
+    if (token) navigate('/home');
   }, [navigate]);
 
   return (
-    <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', marginTop: '100px', }}>
+    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }}>
       <form onSubmit={handleSubmit} style={{
-        background: 'linear-gradient(to top,rgb(0, 0, 0),rgb(144, 0, 255))',
-        padding: '30px',
-        borderRadius: '15px',
-        width: '300px',
-        textAlign: 'center',
+        padding: 30, borderRadius: 10, width: 300,
+        background: 'linear-gradient(to top, black, purple)',
         color: '#fff'
       }}>
         <h3>{isSignup ? 'Signup' : 'Login'}</h3>
 
-        {error && <p style={{ color: '', marginBottom: '10px' }}>{error}</p>}
+        {error && <p style={{ color: '#ffdddd' }}>{error}</p>}
 
         {isSignup && (
           <>
-            <input
-              type="text"
-              name="username"
-              placeholder="Username"
-              onChange={handleChange}
-              required
-              style={inputStyle}
-              autoComplete="username"
-            />
-            <input
-              type="text"
-              name="surname"
-              placeholder="Surname"
-              onChange={handleChange}
-              required
-              style={inputStyle}
-              autoComplete="family-name"
-            />
+            <input type="text" name="username" placeholder="Username"
+              onChange={handleChange} required style={inputStyle} />
+            <input type="text" name="surname" placeholder="Surname"
+              onChange={handleChange} required style={inputStyle} />
           </>
         )}
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Enter your email"
-          onChange={handleChange}
-          required
-          style={inputStyle}
-          autoComplete="email"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Enter your password"
-          onChange={handleChange}
-          required
-          style={inputStyle}
-          autoComplete={isSignup ? "new-password" : "current-password"}
-        />
+        <input type="email" name="email" placeholder="Email"
+          onChange={handleChange} required style={inputStyle} />
+        <input type="password" name="password" placeholder="Password"
+          onChange={handleChange} required style={inputStyle} />
 
         <button type="submit" style={buttonStyle}>
           {isSignup ? 'Signup' : 'Login'}
         </button>
 
-        <p style={{ marginTop: '10px', color: '#fff' }}>
+        <p style={{ marginTop: 10 }}>
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <span
-            onClick={() => setIsSignup(!isSignup)}
-            style={{ color: '#ffffff', textDecoration: 'underline', cursor: 'pointer', }}
-          >
+          <span onClick={() => setIsSignup(!isSignup)} style={{ textDecoration: 'underline', cursor: 'pointer' }}>
             {isSignup ? 'Login' : 'Signup'}
           </span>
         </p>
@@ -140,19 +96,19 @@ const AuthForm = () => {
 
 const inputStyle = {
   margin: '10px 0',
-  padding: '10px',
+  padding: 10,
   width: '100%',
-  borderRadius: '5px',
+  borderRadius: 5,
   border: 'none'
 };
 
 const buttonStyle = {
-  padding: '10px 20px',
+  padding: 10,
   background: 'linear-gradient(to right, #0ea5e9, #3b82f6)',
   color: '#fff',
   border: 'none',
-  borderRadius: '5px',
-  marginTop: '10px',
+  borderRadius: 5,
+  marginTop: 10,
   cursor: 'pointer',
   width: '100%'
 };
